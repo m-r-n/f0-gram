@@ -34,19 +34,23 @@
 
 % piano
 %[x, Fs]=audioread('chords01.wav');
-[x, Fs]=audioread('lil_pianpo_part1.wav');
-
+%[x, Fs]=audioread('lil_pianpo_part1.wav'); % ok w labelling
+[x, Fs]=audioread('chords.wav');
 % play
 player = audioplayer (x, Fs, 16);
 play (player);
 
+%=====================
 % define frameLEngth, StepSize etc.
-
+%=====================
 segLen = 512;
 %segLen = 1024
 segStep = 256
   %Fs = 22050
   Nfft = 2048
+  
+  signalIsPiano = 1
+  signalIsVoice = 0
 
 nSamples = size(x,1)
 nFrames=floor((nSamples-segStep)/segStep)
@@ -105,24 +109,37 @@ size(specFrames);
   xlabel ('Audio frame index [-]')
   ylabel ('11.000Hz ------------ Linear Frequency axis ----------- 0 Hz')
   
+  %=====================
+  % prepare reindexing
+  %=====================
+ 
+  plotSubresults = 1;
+  
+  if signalIsPiano,
+    [LUT1, LUT2, minF0, maxF0] = create_reind_LUTs_4music(Fs, Nfft, plotSubresults);
+    disp ('!!! Analyzing w Piano scale. !!!')
+  elseif signalIsVoice
+    [LUT1, LUT2, minF0, maxF0] = create_reind_LUTs_4voice(Fs, Nfft, plotSubresults);
+    disp ('!!! Analyzing w Linear Pitch scale. !!!')
+    endif
   
   %=====================
   % perform reindexing
   %=====================
-  % the 200 is hard-coded in the LUT generator routine.
+  
+  % the dim.200 is hard-coded in the LUT generator routine.
   reindFrames = zeros (nFrames, 200);
   
-  plotSubresults = 1;
-  [LUT1, LUT2, minF0, maxF0] = create_reind_LUTs_4music(Fs, Nfft, plotSubresults);
- 
   plotThisFrame = 0; % do not plot every frame during reindexing
   tic;
   for i=1:nFrames,
     %disp ([num2str(i), '. frame Processed, out of ', num2str(nFrames)])
     reindFrames(i, :) = reind_one_frame(frames(i, :), Fs, Nfft, minF0, maxF0, LUT1, LUT2, plotThisFrame);
-  
-   endfor
+    endfor
    toc;
+  
+  
+  % add a plot below the spectrogram
   
   figure(11)
   subplot(212)
@@ -132,6 +149,20 @@ size(specFrames);
   xlabel ('Audio frame index [-]')
   %ylabel ('pitch -50Hz')
   ylabel ('880Hz --------- 440Hz --------- 220Hz --------- 110Hz --------- 55Hz')
+  
+  % create a new plot  for note-picking
+  
+  figure(21)
+  clf
+  %subplot(212)
+  colormap(jet);
+  imagesc(reindFrames')
+  title(['Fo-Gram,  segLen=', num2str(segLen), ',  Nfft=', num2str(Nfft)])
+  xlabel ('Audio frame index [-]')
+  %ylabel ('pitch -50Hz')
+  ylabel ('880Hz --------- 440Hz --------- 220Hz --------- 110Hz --------- 55Hz')
+  
+  
   
   %=====================
   % smoothing the reindexing
